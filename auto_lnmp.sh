@@ -10,11 +10,11 @@
 #
 #========================================================================
 dir=/data  
-# 公共行数
+# 公共函数
 [ -f /etc/init.d/functions ] && . /etc/init.d/functions || exit 1
 # 创建放置所有下载文件的目录
 createDir() {
-  if [ ! -e $dir ]
+  if [[ ! -e $dir ]]
     then
       mkdir $dir
   else
@@ -27,7 +27,7 @@ installNginx() {
   # 安装一些需要的依赖，供以后的安装软件使用
   yum install -y net-tools wget pcre pcre-devel openssl openssl-devel gcc make gcc-c++ &>/dev/null
   # 进入放置下载文件的目录
-  [ -e $dir ] && cd $dir
+  [[ -e $dir ]] && cd $dir
   # 下载 Nginx1.9.9 压缩包
   wget http://nginx.org/download/nginx-1.9.9.tar.gz &>/dev/null
   if [ -f 'nginx-1.9.9.tar.gz' ];then
@@ -42,7 +42,7 @@ installNginx() {
 # 对nginx进行配置
 configureNginx() {
   config_path="/usr/local/nginx/conf/nginx.conf"
-  if [ -f $config_path ]
+  if [[ -f $config_path ]]
     then
       # 如果文件目录存在，则在文件最后一行写入include
       config_line=`sed -n '$=' ${config_path}`
@@ -57,7 +57,7 @@ startNginx() {
   # 检查配置文件语法
   /usr/local/nginx/sbin/nginx -t
   # 开启
-  if [ $(echo $?) -eq 0 ]
+  if [[ $(echo $?) -eq 0 ]]
     then
       /usr/local/nginx/sbin/nginx
       if [ $(netstat -lutnp|grep 80|wc -l) -eq 1 ]
@@ -76,7 +76,7 @@ installMysql() {
   rpm -ivh mysql57-community-release-el7-9.noarch.rpm &>/dev/null
   # 安装mysql5.7
   yum install mysql-server mysql-devel -y &>/dev/null
-  if [ -f /etc/my.cnf ];then
+  if [[ -f /etc/my.cnf ]];then
     systemctl start mysqld
    else
      echo "MySQL安装失败！！！！"
@@ -90,11 +90,12 @@ EOF
   sha_passwd=`openssl rand -base64 8`
   # 获取临时密码，用于修改密码
   oo=`grep 'temporary password' /var/log/mysqld.log | awk '{print $11}'`
-  /usr/bin/mysql -uroot -p${oo} -b --connect-expired-password <<EOF
+  mysql_file=`whereis mysql | awk '{print $2}'`
+  ${mysql_file} -uroot -p${oo} -b --connect-expired-password <<EOF
 SET PASSWORD = PASSWORD('${sha_passwd}');
 grant all privileges on *.* to root@'%' identified by '${sha_passwd}';
 EOF
-  if [ "$?" -eq 0 ];then
+  if [[ "$?" -eq 0 ]];then
     action "MySQL数据库安装成功,密码为:${sha_passwd}" /bin/true
   else
     action "MySQL数据库安装失败密码初始化失败！" /bin/false
@@ -105,7 +106,7 @@ EOF
 startMysql(){
   # restart
   systemctl restart mysqld   
-  if [ $(netstat -lutnp|grep 3306|wc -l) -eq 1 ]
+  if [[ $(netstat -lutnp|grep 3306|wc -l) -eq 1 ]]
     then
       action "mysql 开启服务成功..."  /bin/true
   else
@@ -118,7 +119,7 @@ installPHP() {
   echo "开始更新PHP7.2 repo..."
   rpm -Uvh https://dl.fedoraproject.org/pub/epel/7/x86_64/Packages/e/epel-release-7-11.noarch.rpm &>/dev/null
   rpm -Uvh https://mirror.webtatic.com/yum/el7/webtatic-release.rpm  &>/dev/null
-  if [ "$?" -eq 0 ];then
+  if [[ "$?" -eq 0 ]];then
     action "php7.2 repo 已经更新成功！！！！" /bin/true
   else
     action "php7.2 repo 已经更新失败！！！！" /bin/false
@@ -127,7 +128,7 @@ installPHP() {
   echo "开始安装php7.2 ..."
   # 安装php7.2所需要的依赖及组件
   yum -y install php72w php72w-cli php72w-fpm php72w-common php72w-devel php72w-embedded php72w-gd php72w-mbstring php72w-mysqlnd php72w-opcache php72w-pdo php72w-xml &>/dev/null
-  if [ "$?" -eq 0 ];then
+  if [[ "$?" -eq 0 ]];then
     action "php7.2 已经安装成功！！！！" /bin/true
   else
     action "php7.2 已经安装失败！！！！" /bin/false
@@ -139,7 +140,7 @@ startPhpfpm(){
   # start
   systemctl enable php-fpm.service
   systemctl start php-fpm.service
-  if [ $(netstat -lutnp|grep 9000|wc -l) -eq 1 ]
+  if [[ $(netstat -lutnp|grep 9000|wc -l) -eq 1 ]]
     then
       action "php-fpm 启动成功..." /bin/true
   else
