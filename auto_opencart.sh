@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#===========================================================
+#================================================================
 # 
 # File：auto_opencart.sh
 # Author：yangwendi
@@ -9,7 +9,33 @@
 #   自动化部署opencart3.0.3.2脚本，opencart是一个商场系统，这个自动
 #   部署需要配合auto_lnmp.sh才行，其他lnmp或许行
 # 
-#===========================================================
+#================================================================
+
+# 公共函数
+[[ -f /etc/init.d/functions ]] && . /etc/init.d/functions || exit 1
+
+cat <<END 
+#===============================================#
+#                                               #
+#           opencart3 自动化部署选项             #
+#                                               #
+#          1.部署新的opencart3网站               #
+#          2.修复部署网站二次打开报错             #
+#     3.修复解压opencart3失败后，无法重新安装     #
+#                                               #
+#                                               #
+#===============================================#
+END
+
+read  -p "请你输入一个数字:" NUM
+expr $NUM + 1 &> /dev/null
+if [[ "$?" -ne 0 ]];then
+  action "对不起，请你输入整数！！！" /bin/false
+  exit 1
+elif [[ "$NUM" -eq 0 ]];then
+  action "对不起，请你输入比0大的数字！！！" /bin/false
+  exit 1
+fi
 
 # 放置下载文件的便量文件夹
 dir=/data
@@ -18,12 +44,16 @@ webSite=/data
 # 名称
 name=opencart_
 
+if [[ "$NUM" -eq 2 ]];then
+  read -p "请网站名称：" name
+  removePackage
+elif [[ "$NUM" -eq 3 ]];then
+  # TODO... 删除已下载不完全的opencart3就可以解决问题
+fi
+
 read -p "请输入IP：" IP
 read -p "请输入端口号（port）：" port
 read -p "请输入Mysql数据库root权限的密码（password）：" passwd
-
-# 公共函数
-[[ -f /etc/init.d/functions ]] && . /etc/init.d/functions || exit 1
 
 # 验证端口是否被占用，IP是否合法，验证mysql账户并且新建数据库
 checkIP2Port() {
@@ -38,11 +68,11 @@ checkIP2Port() {
 
   # 判断端口是否被占用
   netstat -ant | grep ${port} &>/dev/null
-  if [[[ "$?" -eq 0 ]]];then
+  if [[ "$?" -eq 0 ]];then
     action "${port} 端口号不合法" /bin/false
+    exit 1
   else
     action "${port} 端口号合法" /bin/true
-    exit 1
   fi
 
   # 检查IP合法性
@@ -160,7 +190,7 @@ decompressionOpencart() {
   # # 使用随机文件夹名称
   # name=opencart_${timestamp}
   webSite=/var/www/${name}
-  mkdir ${webSite}
+  mkdir -p ${webSite}
   mv mydatabak/upload/* ${webSite}
   # 删除解压过的文件目录
   rm -rf ${dir}/mydatabak
@@ -261,6 +291,26 @@ checkFirewalld() {
 }
 
 # 7.删除opencart安装包（install）
+removePackage() {
+  webSite=/var/www/${name}
+  if [[ -d webSite ]];then
+    rm -rf /var/www/${name}/install
+    if [[ "$?" -ne 0 ]];then
+      action "修复失败" /bin/false
+      exit 1
+    else
+      [[ -e ${webSite} ]] && cd ${webSite}
+      # 查找需要替换的那一行数据
+      pf=`sed -n "/define('DIR_STORAGE',/p" ${webSite}/config.php`
+      # 将之替换成新的数据
+      sed -i "s#${pf}#define('DIR_STORAGE', '${webSite}/storage/');#g" ${webSite}/config.php
+      sed -i "s#${pf}#define('DIR_STORAGE', '${webSite}/storage/');#g" ${webSite}/admin/config.php
+    fi
+  else
+    action "你所输入的网站目录并不存在" /bin/false
+    exit 1
+  fi
+}
 
 main() {
   checkIP2Port
