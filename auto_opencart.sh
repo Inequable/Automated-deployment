@@ -187,22 +187,27 @@ decompressionOpencart() {
   echo "网站根目录为：${webSite}"
 }
 
-# 4.修改opencart中文件权限和文件命名，并且改名
-# 4.1.文件重命名
-# config-dist.php  config.php
-# admin/config-dist.php  config.php
-# 4.2.文件权限配置,777
-# system/storage/cache
-# system/storage/logs
-# system/storage/download
-# system/storage/upload
-# system/storage/modification
-# image
-# image/cache
-# image/catalog
+# 创建一个apache用户和组，因为在opencart3中，所有的上传的东西，都是基于apache用户与组的，
+# 若不创建这个用户与组，会造成无法上传扩展后报没有权限的错误
+checkUser2Group() {
+  # 检查apache用户与组是否存在
+  cut -d : -f 1 /etc/group | grep apache &>/dev/null
+  if [[ "$?" -ne 0 ]];then
+    groupadd apache &>/dev/null
+  fi
+  cut -d : -f 1 /etc/passwd | grep apache &>/dev/null
+  if [[ "$?" -ne 0 ]];then
+    useradd -g apache apache &>/dev/null
+  fi
+}
+
+# 4.修改opencart中文件权限和文件命名
 empowermentFile() {
+  checkUser2Group
   # 进入 webSite 网站根目录
   [[ -e ${webSite} ]] && cd ${webSite}
+  # 将此网站的目录用户权限，全部配置给apache
+  chown -R apache:apache ${webSite}
   # 文件重命名
   mv admin/config-dist.php admin/config.php
   mv config-dist.php config.php
