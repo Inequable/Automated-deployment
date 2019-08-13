@@ -240,6 +240,7 @@ server {
   index index.php index.html index.htm;
   # Load configuration files for the default server block.
   include /etc/nginx/default.d/*.conf;
+  # client_max_body_size 50m;
   location / {
     try_files \$uri \$uri/ /index.php?\$query_string;
   }
