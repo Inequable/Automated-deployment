@@ -44,17 +44,6 @@ webSite=/data
 # 名称
 name=opencart_
 
-if [[ "$NUM" -eq 2 ]];then
-  read -p "请网站名称：" name
-  removePackage
-elif [[ "$NUM" -eq 3 ]];then
-  # TODO... 删除已下载不完全的opencart3就可以解决问题
-fi
-
-read -p "请输入IP：" IP
-read -p "请输入端口号（port）：" port
-read -p "请输入Mysql数据库root权限的密码（password）：" passwd
-
 # 验证端口是否被占用，IP是否合法，验证mysql账户并且新建数据库
 checkIP2Port() {
   # 使用PHP语法，获取当前时间戳
@@ -69,10 +58,10 @@ checkIP2Port() {
   # 判断端口是否被占用
   netstat -ant | grep ${port} &>/dev/null
   if [[ "$?" -eq 0 ]];then
-    action "${port} 端口号不合法" /bin/false
+    action "${port} 端口号已被占用" /bin/false
     exit 1
   else
-    action "${port} 端口号合法" /bin/true
+    action "${port} 此端口号可以使用" /bin/true
   fi
 
   # 检查IP合法性
@@ -293,7 +282,7 @@ checkFirewalld() {
 # 7.删除opencart安装包（install）
 removePackage() {
   webSite=/var/www/${name}
-  if [[ -d webSite ]];then
+  if [[ -d ${webSite} ]];then
     rm -rf /var/www/${name}/install
     if [[ "$?" -ne 0 ]];then
       action "修复失败" /bin/false
@@ -305,11 +294,29 @@ removePackage() {
       # 将之替换成新的数据
       sed -i "s#${pf}#define('DIR_STORAGE', '${webSite}/storage/');#g" ${webSite}/config.php
       sed -i "s#${pf}#define('DIR_STORAGE', '${webSite}/storage/');#g" ${webSite}/admin/config.php
+      mv ${webSite}/system/storage/ ${webSite}/storage/
+      if [[ "$?" -eq 0 ]];then
+        action "修复成功" /bin/true
+      else
+        action "修复失败" /bin/false
+      fi
     fi
   else
     action "你所输入的网站目录并不存在" /bin/false
-    exit 1
   fi
+  exit 1
+}
+
+removeOpencart3() {
+  [[ -e $dir ]] && cd $dir
+  # 删除已下载不完全的opencart3的压缩包
+  rm -rf ${dir}/opencart*
+  if [[ "$?" -eq 0 ]];then
+    action "修复成功" /bin/true
+  else
+    action "修复失败" /bin/false
+  fi
+  exit 1
 }
 
 main() {
@@ -327,4 +334,18 @@ main() {
   checkFirewalld
 }
 
-main
+if [[ "$NUM" -eq 1 ]];then
+  read -p "请输入IP：" IP
+  read -p "请输入端口号（port）：" port
+  read -p "请输入Mysql数据库root权限的密码（password）：" passwd
+  main
+elif [[ "$NUM" -eq 2 ]];then
+  read -p "请网站名称（以opencart_开头）：" name
+  removePackage
+elif [[ "$NUM" -eq 3 ]];then
+  # 删除已下载不完全的opencart3就可以解决问题
+  removeOpencart3
+else
+  action "选择的指令不在选项内，无法操作" /bin/false
+  exit 1
+fi
