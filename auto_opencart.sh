@@ -268,13 +268,13 @@ EOF
 checkFirewalld() {
   # 获取 firewalld 的状态，running表示运行
   status=`firewall-cmd --state`
-  if [ ${status} = "running" ];then
+  if [ ${status} -eq "running" ];then
     # 开放对应端口，允许外部访问，若是 阿里云 则不需要此层设置，需要直接去 阿里云 网站做相关配置
-    if [[ `firewall-cmd --zone=public --add-port=${port}/tcp --permanent` != "success" ]];then
+    if [[ `firewall-cmd --zone=public --add-port=${port}/tcp --permanent` -ne "success" ]];then
       action "${port} 端口设置失败" /bin/false
       exit 1
     fi
-    if [[ `firewall-cmd --reload` != "success" ]];then
+    if [[ `firewall-cmd --reload` -ne "success" ]];then
       action "firewall 服务重启失败" /bin/false
       exit 1
     fi
@@ -337,7 +337,7 @@ main() {
   sleep 2
   configNginx
   sleep 2
-  checkFirewalld
+  # checkFirewalld
 }
 
 if [[ "$NUM" -eq 1 ]];then
